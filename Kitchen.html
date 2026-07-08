@@ -28,7 +28,7 @@
     <script src="/socket.io/socket.io.js"></script>
 
     <script>
-        // 2. เชื่อมต่อไปยังเซิร์ฟเวอร์ (ปล่อยว่างไว้ มันจะวิ่งหา URL ของ Render อัตโนมัติ)
+        // 2. เปิดใช้งาน Socket.io
         const socket = io();
 
         function renderOrders() {
@@ -68,22 +68,22 @@
             renderOrders();
         }
 
-        // 3. เปลี่ยนจากรอฟังในเครื่องตัวเอง มาเป็น "รอฟังออเดอร์ใหม่จากเซิร์ฟเวอร์ผ่าน Socket"
+        // 3. รอช้อนรับออเดอร์ใหม่ที่เซิร์ฟเวอร์ (Render) ยิงแจกจ่ายมาให้แบบข้ามเครื่อง
         socket.on('kitchen_receive', (newOrder) => {
-            console.log('ได้รับออเดอร์ใหม่ข้ามเครื่อง:', newOrder);
+            console.log('ได้รับออเดอร์ใหม่ข้ามเครื่องเรียบร้อย:', newOrder);
             
-            // ดึงออเดอร์เดิมในเครื่องห้องครัวออกมาก่อน
+            // ดึงรายการออเดอร์เดิมที่อาจจะยังเคลียร์ไม่หมดบนจอครัวออกมาก่อน
             let orders = JSON.parse(localStorage.getItem('hotpot_orders')) || [];
             
-            // นำออเดอร์ใหม่ที่เซิร์ฟเวอร์ส่งมาให้ เพิ่มเข้าไปในรายการเดิม
-            orders.push(newOrder);
-            
-            // เซฟลงเครื่องห้องครัวและอัปเดตหน้าจอทันที
-            localStorage.setItem('hotpot_orders', JSON.stringify(orders));
-            renderOrders();
+            // ตรวจสอบเพื่อป้องกันออเดอร์ซ้ำ (เช็คจาก id หรือเวลา)
+            if (!orders.some(o => o.id === newOrder.id)) {
+                orders.push(newOrder); // เพิ่มออเดอร์ใหม่เข้าไป
+                localStorage.setItem('hotpot_orders', JSON.stringify(orders)); // บันทึกลงหน่วยความจำครัว
+                renderOrders(); // อัปเดตหน้าจอทันทีโดยไม่ต้องกดรีเฟรช
+            }
         });
 
-        // รันครั้งแรกตอนเปิดหน้าเว็บเพื่อโหลดออเดอร์เก่าที่ยังค้างอยู่ขึ้นมาดู
+        // โหลดข้อมูลเก่าที่ยังทำไม่เสร็จขึ้นมาแสดงตอนเปิดหน้าเว็บครั้งแรก
         renderOrders();
     </script>
 </body>
