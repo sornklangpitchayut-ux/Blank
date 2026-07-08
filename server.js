@@ -1,48 +1,43 @@
 const express = require('express');
 const app = express();
-const path = require('path'); // ดึงโมดูล path มาช่วยจัดการตำแหน่งไฟล์
+const path = require('path'); 
 
-// Use Render's dynamic port environment variable, fallback to 3000 for local development
+// 1. เพิ่มโมดูล HTTP และ Socket.io เข้ามา
+const http = require('http');
+const server = http.createServer(app);
+const { Server } = require("socket.io");
+const io = new Server(server, {
+    cors: { origin: "*" } // อนุญาตให้อุปกรณ์อื่นเชื่อมต่อได้
+});
+
 const PORT = process.env.PORT || 3000;
 
-// Middleware to handle JSON request bodies
 app.use(express.json());
 
-// Basic GET route (หน้าแรก)
-app.get('/', (req, res) => {
-    res.json({ message: "Welcome to your local server!" });
-});
+// จัดการเชื่อมต่อของ Socket.io
+io.on('connection', (socket) => {
+    console.log('มีผู้ใช้งานเชื่อมต่อเข้ามา:', socket.id);
 
-// 1. Route สำหรับเปิดไฟล์ Customer.html
-app.get('/Customer.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'Customer.html'));
-});
+    // เมื่อได้รับออเดอร์จากฝั่งลูกค้า (Customer)
+    socket.on('new_order', (orderData) => {
+        console.log('ได้รับออเดอร์ใหม่:', orderData);
+        // ส่งออเดอร์นั้นต่อไปให้ทุกๆ เครื่องที่เปิดหน้าจออยู่ (ซึ่งก็คือห้องครัว)
+        io.emit('kitchen_receive', orderData);
+    });
 
-// รองรับกรณีพิมพ์ตัวเล็กด้วยเพื่อความปลอดภัย (สำหรับ Linux บน Render)
-app.get('/customer.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'Customer.html'));
-});
-
-// 2. Route สำหรับเปิดไฟล์ Kitchen.html
-app.get('/Kitchen.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'Kitchen.html'));
-});
-
-// รองรับกรณีพิมพ์ตัวเล็กสำหรับหน้า Kitchen
-app.get('/kitchen.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'Kitchen.html'));
-});
-
-// Basic POST route
-app.post('/api/data', (req, res) => {
-    const receivedData = req.body;
-    res.status(201).json({
-        status: "success",
-        received: receivedData
+    socket.on('disconnect', () => {
+        console.log('ผู้ใช้งานตัดการเชื่อมต่อ');
     });
 });
 
-// Start the server (binding to '0.0.0.0' is required for cloud hosting)
-app.listen(PORT, '0.0.0.0', () => {
+// เส้นทางเปิดไฟล์คงเดิม
+app.get('/', (req, res) => res.json({ message: "Welcome to your server!" }));
+app.get('/customer.html', (req, res) => res.sendFile(path.join(__dirname, 'Customer.html')));
+app.get('/Customer.html', (req, res) => res.sendFile(path.join(__dirname, 'Customer.html')));
+app.get('/kitchen.html', (req, res) => res.sendFile(path.join(__dirname, 'Kitchen.html')));
+app.get('/Kitchen.html', (req, res) => res.sendFile(path.join(__dirname, 'Kitchen.html')));
+
+// 2. สำคัญมาก: เปลี่ยนจาก app.listen เป็น server.listen เพื่อให้ Socket ทำงานได้
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server is running on port ${PORT}`);
 });
