@@ -25,7 +25,12 @@
 
     <div class="orders-grid" id="orders-container"></div>
 
+    <script src="/socket.io/socket.io.js"></script>
+
     <script>
+        // 2. เชื่อมต่อไปยังเซิร์ฟเวอร์ (ปล่อยว่างไว้ มันจะวิ่งหา URL ของ Render อัตโนมัติ)
+        const socket = io();
+
         function renderOrders() {
             const container = document.getElementById('orders-container');
             const orders = JSON.parse(localStorage.getItem('hotpot_orders')) || [];
@@ -63,11 +68,22 @@
             renderOrders();
         }
 
-        // Live native listening without network backend configuration needed
-        window.addEventListener('storage', (e) => {
-            if (e.key === 'hotpot_orders') renderOrders();
+        // 3. เปลี่ยนจากรอฟังในเครื่องตัวเอง มาเป็น "รอฟังออเดอร์ใหม่จากเซิร์ฟเวอร์ผ่าน Socket"
+        socket.on('kitchen_receive', (newOrder) => {
+            console.log('ได้รับออเดอร์ใหม่ข้ามเครื่อง:', newOrder);
+            
+            // ดึงออเดอร์เดิมในเครื่องห้องครัวออกมาก่อน
+            let orders = JSON.parse(localStorage.getItem('hotpot_orders')) || [];
+            
+            // นำออเดอร์ใหม่ที่เซิร์ฟเวอร์ส่งมาให้ เพิ่มเข้าไปในรายการเดิม
+            orders.push(newOrder);
+            
+            // เซฟลงเครื่องห้องครัวและอัปเดตหน้าจอทันที
+            localStorage.setItem('hotpot_orders', JSON.stringify(orders));
+            renderOrders();
         });
 
+        // รันครั้งแรกตอนเปิดหน้าเว็บเพื่อโหลดออเดอร์เก่าที่ยังค้างอยู่ขึ้นมาดู
         renderOrders();
     </script>
 </body>
