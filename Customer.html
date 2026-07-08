@@ -119,7 +119,12 @@
         </div>
     </div>
 
+    <script src="/socket.io/socket.io.js"></script>
+
     <script>
+        // 2. เริ่มต้นเชื่อมต่อไปยังเซิร์ฟเวอร์ Render
+        const socket = io();
+
         const menuItems = [
             { id: 1, name: "เนื้อวัวสไลด์ (Beef)", price: 89 },
             { id: 2, name: "หมูสามชั้นสไลด์ (Pork Belly)", price: 69 },
@@ -202,9 +207,8 @@
                 time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
             };
 
-            let existingOrders = JSON.parse(localStorage.getItem('hotpot_orders')) || [];
-            existingOrders.push(newOrder);
-            localStorage.setItem('hotpot_orders', JSON.stringify(existingOrders));
+            // 3. เปลี่ยนจากการบันทึกลงเครื่องตัวเอง เป็นการยิงส่งออกท่อ WebSocket ไปหา Server หลังบ้าน
+            socket.emit('new_order', newOrder);
 
             alert("ส่งออเดอร์เข้าครัวเรียบร้อย! 🎉");
             cart = {};
